@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
 #
@@ -238,9 +239,6 @@ def loop():
         sleep(2)
         lcd.clear()
         lcd.message("   SUNFOUNDER \nHello World ! :)")
-        sleep(2)
-        lcd.clear()
-        lcd.message("Welcom to --->\n  sunfounder.com")
         sleep(2)
 
 

@@ -1,9 +1,14 @@
+# -*- coding: utf-8 -*-
+
+#!/usr/bin/env python
+
 import RPi.GPIO as GPIO
 from config import Config
 
 from LCD_1602 import LCD_1602
 from ds1820 import DS1820
-from consigne import Consigne
+from thermostat import Thermostat
+from thermometre import Thermometre
 
 import time
 
@@ -11,42 +16,26 @@ ECO = 1
 CONF = 2
 
 
-def create_lcd_text(temp, cons, mode, status):
-    text = "Temp. : {:2.1f}".format(temp)
-    if mode == 'ECO':
-        text += " ECO"
-    else:
-        text += " CONF"
-    text += "\n"
-    text += "Cons. : {:2.1f}".format(cons)
-    if status:
-        text += "  On"
-    else:
-        text += " Off"
-    return text
-
-
-def save_temp(event_date, temp):
-    print time.strftime("%a, %d %b %Y %H:%M:%S +0000", event_date) + " " + str(temp)
-
-
 if __name__ == '__main__':
     config = Config()
-    consigne = Consigne(config)
+    consigne = Thermostat(config)
     GPIO.setwarnings = False
-    print "hello"
+    thermometre = Thermometre()
     lcd = LCD_1602(config.pin['rs'], config.pin['e'], config.pin['db'], config.pin['GPIO'])
-    sonde_1 = DS1820(config.sonde_1)
-    sonde_2 = DS1820(config.sonde_2)
-    while True:
-        temperature_1 = sonde_1.get_temp(1)
-        temperature_2 = sonde_2.get_temp(2)
-        now = time.localtime()
-        save_temp(now, temperature_1)
-        (mode, temp_consigne) = consigne.get_tranche_infos(config.conf, now)
-        status = consigne.get_status(temperature_1, temp_consigne)
-        lcd.clear()
-#        lcd.message(create_lcd_text(temperature_1, temp_consigne, mode, status))
-        lcd.message(create_lcd_text("Ext. : "+str(temperature_1)+"\nInt. : "+str(temperature_2)))
-        time.sleep(1)
-
+    sondes = DS1820("/sys/bus/w1/devices/", ("28-011561577dff", "28-0115615a35ff"))
+    channel = 23
+    GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    try:
+        GPIO.add_event_detect(channel, GPIO.BOTH, callback=thermometre.change_mode, bouncetime=75)
+        while True:
+            now = time.localtime()
+            thermometre.read_temp(sondes)
+            thermometre.save_temp(now, 1)
+            (mode, temp_consigne) = consigne.get_tranche_infos(config.conf, now)
+            status = consigne.get_status(thermometre.get_temp(1), temp_consigne)
+            lcd.clear()
+            lcd.message(thermometre.create_text(1, temp_consigne, mode, status))
+            time.sleep(1)
+    except KeyboardInterrupt:
+        GPIO.cleanup()
+    GPIO.cleanup()
