@@ -21,10 +21,10 @@ class DS1820:
         :param id_capteur:
         :return:
         """
-        file1 = open(self.fileRoot+self.capteurs[id_capteur]+"/w1_slave", "r")
-        file1.readline()
-        line2 = file1.readline().strip()
-        m = re.findall(r"t=([\d]{5})", line2)
+        ds1820_file = open(self.fileRoot+self.capteurs[id_capteur]+"/w1_slave", "r")
+        ds1820_file.readline()
+        line2 = ds1820_file.readline().strip()
+        m = re.findall(r"t=([\d]{1,5})", line2)
         temp = float(m[0])
-        file1.close()
+        ds1820_file.close()
         return temp/1000

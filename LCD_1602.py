@@ -64,6 +64,7 @@ class LCD_1602:
         self.pins_db = pins_db
 
         self.GPIO.setmode(GPIO.BCM)
+
         self.GPIO.setup(self.pin_e, GPIO.OUT)
         self.GPIO.setup(self.pin_rs, GPIO.OUT)
 

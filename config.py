@@ -2,12 +2,17 @@
 
 class Config:
     def __init__(self):
+        self.available_pin = self.get_available_pins()
         self.conf = self.set_consignes()
         self.pin = self.set_lcd_pins()
         self.sonde_1 = "28-011561577dff"
         self.sonde_2 = "28-0115615a35ff"
 
     def set_consignes(self):
+        """
+        Configuration du thermostat
+        :return:
+        """
         conf = {}
         conf['mode'] = 'WEEKEND' # 24 - WEEKEND - HEBDO
         conf['hysteresis'] = 1
@@ -49,8 +54,34 @@ class Config:
 
     def set_lcd_pins(self):
         pin = {}
-        pin['rs'] = 27
-        pin['e'] = 22
-        pin['db'] = [25, 24, 23, 18]
-        pin['GPIO'] = None
+        pin['rs'] = self.search_gpio_pin('rs')
+        pin['e'] = self.search_gpio_pin('e')
+        pin['db'] = []
+        for i in range(1, 5):
+            pin['db'].append(self.search_gpio_pin('db'+str(i)))
+        pin['GPIO'] = self.search_gpio_pin('GPIO')
         return pin
+
+    def set_button_pin(self):
+        pin = self.search_gpio_pin('mode')
+        return pin
+
+    def get_available_pins(self):
+        pin = {}
+        pin[17] = 'mode'
+        pin[18] = 'db4'
+        pin[22] = 'e'
+        pin[23] = 'db3'
+        pin[24] = 'db2'
+        pin[25] = 'db1'
+        pin[27] = 'rs'
+        return pin
+
+    def search_gpio_pin(self, value):
+        result = [c for c, v in self.get_available_pins().items() if v == value]
+        if len(result) == 0:
+            return None
+        elif len(result) == 1:
+            return result[0]
+        else:
+            return result

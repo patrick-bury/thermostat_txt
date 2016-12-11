@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import datetime
 
 class Thermostat:
 
@@ -40,13 +40,13 @@ class Thermostat:
         """
         now_decimal = now.tm_hour + float(now.tm_min)/60
         mode = self.config['mode']
-        if now.wday() == 6 or now.wday == 7:
+        if now.tm_wday == 6 or now.tm_wday == 7:
             clef = 'SD'
-            mode = self.getMode(mode, clef, now_decimal)
+            mode = self.get_mode(mode, clef, now_decimal)
             return mode
         else:
             for clef in self.config[mode]:
-                mode = self.getMode(mode, clef,now_decimal)
+                mode = self.get_mode(mode, clef, now_decimal)
                 return mode
         return self.config[mode]['defaut']['mode'], self.config[mode][self.config[mode][clef]['mode']]
 
