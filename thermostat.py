@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import datetime
+
 
 class Thermostat:
 
-    def __init__(self,config):
+    def __init__(self, config):
         """
         :param config:
         :return:
@@ -19,7 +19,7 @@ class Thermostat:
         deci = int(values[0]) + float(values[1])/60
         return deci
 
-    def get_mode(self, mode, clef, now_decimal):
+    def get_level(self, mode, clef, now_decimal):
         """
         :param mode:
         :param clef:
@@ -29,36 +29,41 @@ class Thermostat:
         h_min = self.time_to_deci(self.config[mode][clef]['debut'])
         h_max = self.time_to_deci(self.config[mode][clef]['fin'])
         if now_decimal >= h_min and now_decimal < h_max:
-            return self.config[mode][clef]['mode'], self.config[mode][self.config[mode][clef]['mode']]
-        return self.config[mode]['defaut']['mode'], self.config[mode][self.config[mode][clef]['mode']]
+            return self.config[mode][clef]['confort_level']
+        return False
 
-    def get_tranche_infos(self, consignes, now):
+    def get_tranche_infos(self, now):
         """
-        :param consignes:
         :param now:
         :return:
         """
         now_decimal = now.tm_hour + float(now.tm_min)/60
         mode = self.config['mode']
-        if now.tm_wday == 6 or now.tm_wday == 7:
+        if mode == 'weekend' and now.tm_wday == 6 or now.tm_wday == 7:
             clef = 'SD'
-            mode = self.get_mode(mode, clef, now_decimal)
-            return mode
+            confort_level = self.get_level(mode, clef, now_decimal)
+            return confort_level
         else:
             for clef in self.config[mode]:
-                mode = self.get_mode(mode, clef, now_decimal)
-                return mode
-        return self.config[mode]['defaut']['mode'], self.config[mode][self.config[mode][clef]['mode']]
+                if type(self.config[mode][clef]) is not int and clef != 'defaut':
+                    confort_level = self.get_level(mode, clef, now_decimal)
+                    if confort_level:
+                        return confort_level, self.config[mode][self.config[mode][clef]['confort_level']]
+            return self.config[mode]['defaut'], self.config[mode][self.config[mode]['defaut']]
 
-    def get_status(self, temperature_1, temp_consigne):
+    def get_status(self, temperature, temp_consigne):
         """
         :param temperature_1:
         :param temp_consigne:
         :return:
         """
-        if temperature_1 < temp_consigne - self.config['hysteresis']:
-            return True
-        elif temperature_1 < temp_consigne + self.config['hysteresis']:
-            return True
+        if temperature < temp_consigne - self.config['hysteresis']:
+            status = True
+        elif temperature > temp_consigne + self.config['hysteresis']:
+            status = False
         else:
-            return False
+            status = None
+        return status
+
+    def appui(self, channel):
+        print self.config

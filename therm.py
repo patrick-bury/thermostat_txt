@@ -12,30 +12,59 @@ from thermostat import Thermostat
 from thermometre import Thermometre
 
 
-ECO = 1
-CONF = 2
+class Main:
+
+    def __init__(self):
+        self.config = Config()
+        self.consigne = Thermostat(self.config)
+        self.thermometre = Thermometre(self.config)
+        self.gpio_bouton = self.config.search_gpio_pin('mode_affichage')
+        self.debug = True
+
+    def setup(self):
+        GPIO.setmode(GPIO.BCM)
+        self.gpio_bouton = self.config.search_gpio_pin('mode_affichage')
+        GPIO.setup(self.gpio_bouton, GPIO.IN)
+        GPIO.add_event_detect(self.gpio_bouton, GPIO.RISING, callback=self.thermometre.change_mode, bouncetime=75)
+        self.lcd = LCD_1602(self.config.pin['rs'], self.config.pin['e'], self.config.pin['db'], GPIO)
+        self.sondes = DS1820(self.config)
+        self.gpio_relai = self.config.search_gpio_pin('relai')
+        GPIO.setup(self.gpio_relai, GPIO.OUT)
+        self.thermometre.set_mode('standard')
+
+    def affichage_terminal(self, lieu, temp_consigne, confort_level, status):
+            self.lcd.clear()
+            text = self.thermometre.create_text(lieu , temp_consigne, confort_level, status, mode="standard")
+            self.lcd.message(text)
+            print(text)
+            text = self.thermometre.create_text(lieu, temp_consigne, confort_level, status, mode="dual")
+            print(text)
+
+    def main(self):
+        self.lcd.clear()
+        self.thermometre.set_mode("standard")
+        while True:
+            now = time.localtime()
+            self.thermometre.read_temp(self.sondes)
+            self.thermometre.save_all_temps(now)
+            (confort_level, temp_consigne) = self.consigne.get_tranche_infos(now)
+            status = self.consigne.get_status(self.thermometre.get_temp('bureau'), temp_consigne)
+            if status:
+                GPIO.output(self.gpio_relai, GPIO.HIGH)
+            else:
+                GPIO.output(self.gpio_relai, GPIO.LOW)
+            self.affichage_terminal("bureau", temp_consigne, confort_level, status)
+            self.lcd.clear()
+            text = self.thermometre.create_text("bureau", temp_consigne, confort_level, status)
+            self.lcd.message(text)
+            time.sleep(self.config.intervalle_mesures)
 
 
 if __name__ == '__main__':
-    config = Config()
-    consigne = Thermostat(config)
-    thermometre = Thermometre()
-    lcd = LCD_1602(config.pin['rs'], config.pin['e'], config.pin['db'], GPIO)
-    lcd.clear()
-    sondes = DS1820("/sys/bus/w1/devices/", ("28-011561577dff", "28-0115615a35ff"))
-   # channel = 23
-   # GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    appli = Main()
+    appli.setup()
     try:
-       # GPIO.add_event_detect(channel, GPIO.BOTH, callback=thermometre.change_mode, bouncetime=75)
-        while True:
-            now = time.localtime()
-            thermometre.read_temp(sondes)
-            thermometre.save_temp(now, 0)
-            (mode, temp_consigne) = consigne.get_tranche_infos(config.conf, now)
-            status = consigne.get_status(thermometre.get_temp(0), temp_consigne)
-            lcd.clear()
-            lcd.message(thermometre.create_text(1, temp_consigne, mode, status))
-            time.sleep(1)
+        appli.main()
     except KeyboardInterrupt:
         pass
     finally:
